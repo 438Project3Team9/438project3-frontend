@@ -1,80 +1,107 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, TouchableOpacity, 
-  Modal, TextInput, KeyboardAvoidingView, Platform 
+  Modal, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator 
 } from 'react-native';
 
-const MOCK_DATA = [
-  { id: '1', name: 'Food', amount: 45.00, date: '2025-10-01' },
-  { id: '2', name: 'Transport', amount: 12.50, date: '2025-10-02' },
-  { id: '3', name: 'Shopping', amount: 80.00, date: '2025-10-03' },
-];
+const API_BASE_URL = 'http://localhost:9090/api/expenses';
 
 export default function ExpensesScreen() {
+  const [expenses, setExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   
-  // Form State
+  // Form State - Adjusted to match Backend Schema
   const [editingId, setEditingId] = useState(null);
-  const [name, setName] = useState('');
+  const [merchantName, setMerchantName] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
+
+  // --- FETCH DATA ---
+  const fetchExpenses = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(API_BASE_URL);
+      const data = await response.json();
+      setExpenses(data);
+    } catch (error) {
+      console.error("Error fetching expenses:", error);
+      alert("Failed to connect to backend. Check your IP/Port!");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExpenses();
+  }, []);
 
   // --- HANDLERS ---
 
   const handleAddNew = () => {
-    // Dynamic Date Logic: Always gets "Today"
     const today = new Date().toISOString().split('T')[0]; 
-    
     setEditingId(null);
-    setName('');
+    setMerchantName('');
     setAmount('');
-    setDate(today); // Auto-fills today's date
+    setDate(today);
     setModalVisible(true);
   };
 
   const handleEdit = (item) => {
-    setEditingId(item.id);
-    setName(item.name);
+    setEditingId(item.expenseId);
+    setMerchantName(item.merchantName || '');
     setAmount(item.amount.toString());
-    setDate(item.date); // Keeps the record's original date
+    // Extract date string from ISO format
+    setDate(item.expenseDate ? item.expenseDate.split('T')[0] : ''); 
     setModalVisible(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+
     if (editingId) {
-      console.log(`Updating ID ${editingId}:`, { name, amount, date });
+      console.log(`Updating Expense ${editingId}:`, { merchantName, amount, date });
     } else {
-      console.log("Creating New Expense:", { name, amount, date });
+      console.log("Creating New Expense:", { merchantName, amount, date });
     }
     setModalVisible(false);
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Expense List</Text>
+      <Text style={styles.title}>My Expenses</Text>
 
       <TouchableOpacity style={styles.addButton} onPress={handleAddNew}>
         <Text style={styles.addButtonText}>+ Add New Expense</Text>
       </TouchableOpacity>
       
-      <FlatList
-        data={MOCK_DATA}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.row}>
-            <Text style={styles.cellDate}>{item.date}</Text>
-            <Text style={styles.cellName}>{item.name}</Text>
-            <Text style={styles.cellAmount}>${item.amount.toFixed(2)}</Text>
-            
-            <TouchableOpacity 
-              style={styles.editButtonSmall} 
-              onPress={() => handleEdit(item)}
-            >
-              <Text style={styles.editButtonText}>Edit</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      />
+      {loading ? (
+        <ActivityIndicator size="large" color="#2e7d32" />
+      ) : (
+        <FlatList
+          data={expenses}
+          keyExtractor={(item) => item.expenseId.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.row}>
+              <View style={{ flex: 2 }}>
+                <Text style={styles.cellDate}>
+                  {item.expenseDate ? item.expenseDate.split('T')[0] : 'No Date'}
+                </Text>
+                <Text style={styles.cellName}>{item.merchantName || "Uncategorized"}</Text>
+              </View>
+              
+              <Text style={styles.cellAmount}>${item.amount.toFixed(2)}</Text>
+              
+              <TouchableOpacity 
+                style={styles.editButtonSmall} 
+                onPress={() => handleEdit(item)}
+              >
+                <Text style={styles.editButtonText}>Edit</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          ListEmptyComponent={<Text style={{textAlign: 'center', marginTop: 20}}>No expenses found.</Text>}
+        />
+      )}
 
       <Modal animationType="slide" transparent={true} visible={modalVisible}>
         <View style={styles.modalOverlay}>
@@ -95,12 +122,12 @@ export default function ExpensesScreen() {
               onChangeText={setAmount}
             />
             
-            <Text style={styles.label}>Category / Name</Text>
+            <Text style={styles.label}>Merchant / Description</Text>
             <TextInput 
               style={styles.input} 
-              placeholder="e.g. Food, Bills" 
-              value={name}
-              onChangeText={setName}
+              placeholder="e.g. Burrito, Starbucks" 
+              value={merchantName}
+              onChangeText={setMerchantName}
             />
 
             <Text style={styles.label}>Date (YYYY-MM-DD)</Text>
@@ -137,13 +164,13 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
     justifyContent: 'space-between'
   },
-  cellDate: { flex: 2, fontSize: 13, color: '#666' },
-  cellName: { flex: 2, fontSize: 15, fontWeight: '500' },
-  cellAmount: { flex: 1.5, fontSize: 15, fontWeight: 'bold', textAlign: 'right', marginRight: 10 },
-  editButtonSmall: { backgroundColor: '#2e7d32', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
+  cellDate: { fontSize: 12, color: '#888' },
+  cellName: { fontSize: 16, fontWeight: '600', color: '#333' },
+  cellAmount: { flex: 1, fontSize: 16, fontWeight: 'bold', textAlign: 'right', marginRight: 15, color: '#2e7d32' },
+  editButtonSmall: { backgroundColor: '#2e7d32', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 8 },
   editButtonText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalView: { width: '90%', backgroundColor: 'white', borderRadius: 20, padding: 25, elevation: 5 },
+  modalView: { width: '90%', backgroundColor: 'white', borderRadius: 20, padding: 25, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
   modalHeader: { fontSize: 22, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
   label: { fontSize: 14, fontWeight: '600', color: '#555', marginBottom: 5 },
   input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 10, padding: 12, fontSize: 16, marginBottom: 15 },
