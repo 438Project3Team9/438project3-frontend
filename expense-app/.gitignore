@@ -49,4 +49,32 @@ app-example
 /ios
 /android
 
+# IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
 
+# logs
+*.log
+
+# coverage / test
+coverage/
+
+# temp
+.tmp/
+temp/
+
+# OS
+Thumbs.db
+desktop.ini
+
+# package manager
+.pnpm-store/
+.npm/
+
+# build cache
+.cache/
+
+# expo router type cache
+expo-router.d.ts

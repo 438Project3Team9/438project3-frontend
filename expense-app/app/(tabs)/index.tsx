@@ -1,98 +1,272 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { getDashboard } from "../src/services/dashboardApi";
+import { DashboardResponse } from "../src/types/dashboard";
 
-export default function HomeScreen() {
+
+export default function DashboardScreen() {
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  async function loadDashboard() {
+    try {
+      const data = await getDashboard();
+      setDashboard(data);
+    } catch (error) {
+      console.error("Dashboard fetch error:", error);
+      alert(String(error));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.loadingText}>Loading dashboard...</Text>
+      </View>
+    );
+  }
+
+  if (!dashboard) {
+    return (
+      <View style={styles.center}>
+        <Text>Failed to load dashboard.</Text>
+      </View>
+    );
+  }
+
+  const userName =
+    dashboard.user.displayName || dashboard.user.username || "User";
+
+  const percentage = Math.min(dashboard.budgetUsedPercentage, 100);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* User Profile */}
+      <View style={styles.profileRow}>
+        {dashboard.user.profilePictureUrl ? (
+          <Image
+            source={{ uri: dashboard.user.profilePictureUrl }}
+            style={styles.profileImage}
+          />
+        ) : (
+          <View style={styles.profilePlaceholder}>
+            <Text style={styles.profileInitial}>
+              {userName.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        )}
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        <View>
+          <Text style={styles.welcomeText}>Welcome back,</Text>
+          <Text style={styles.userName}>{userName}</Text>
+        </View>
+      </View>
+
+      {/* Budget Progress */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Monthly Budget</Text>
+
+        <View style={styles.budgetRow}>
+          <Text style={styles.spentText}>
+            ${dashboard.monthlySpent.toFixed(2)}
+          </Text>
+          <Text style={styles.budgetText}>
+            / ${dashboard.monthlyBudget.toFixed(2)}
+          </Text>
+        </View>
+
+        <View style={styles.progressBarBackground}>
+          <View style={[styles.progressBarFill, { width: `${percentage}%` }]} />
+        </View>
+
+        <Text style={styles.percentageText}>
+          {dashboard.budgetUsedPercentage.toFixed(1)}% used this month
+        </Text>
+      </View>
+
+      {/* Recent Expenses */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Recent Expenses</Text>
+
+        {dashboard.recentExpenses.length === 0 ? (
+          <Text style={styles.emptyText}>No expenses yet.</Text>
+        ) : (
+          dashboard.recentExpenses.map((expense) => (
+            <View key={expense.expenseId} style={styles.expenseItem}>
+              <View>
+                <Text style={styles.expenseTitle}>
+                  {expense.merchantName || expense.description || "Expense"}
+                </Text>
+                <Text style={styles.expenseCategory}>
+                  {expense.categoryName}
+                </Text>
+              </View>
+
+              <Text style={styles.expenseAmount}>
+                ${expense.amount.toFixed(2)}
+              </Text>
+            </View>
+          ))
+        )}
+
+        <Pressable style={styles.viewAllButton}>
+          <Text style={styles.viewAllButtonText}>View All Expenses</Text>
+        </Pressable>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: "#F5F6FA",
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  content: {
+    padding: 20,
+    paddingBottom: 40,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#666",
+  },
+  profileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+    gap: 12,
+  },
+  profileImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  profilePlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#DDE3F0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileInitial: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#333",
+  },
+  welcomeText: {
+    fontSize: 14,
+    color: "#777",
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#111",
+  },
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 20,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 16,
+    color: "#111",
+  },
+  budgetRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    marginBottom: 12,
+  },
+  spentText: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#111",
+  },
+  budgetText: {
+    fontSize: 16,
+    color: "#777",
+    marginBottom: 4,
+  },
+  progressBarBackground: {
+    width: "100%",
+    height: 12,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 999,
+    overflow: "hidden",
+    marginBottom: 10,
+  },
+  progressBarFill: {
+    height: "100%",
+    backgroundColor: "#4F46E5",
+    borderRadius: 999,
+  },
+  percentageText: {
+    fontSize: 14,
+    color: "#555",
+  },
+  expenseItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEE",
+  },
+  expenseTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#111",
+  },
+  expenseCategory: {
+    fontSize: 13,
+    color: "#777",
+    marginTop: 4,
+  },
+  expenseAmount: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#111",
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#777",
+    marginBottom: 12,
+  },
+  viewAllButton: {
+    marginTop: 18,
+    backgroundColor: "#111827",
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  viewAllButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
   },
 });
