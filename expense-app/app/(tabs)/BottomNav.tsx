@@ -21,7 +21,7 @@ export default function BottomNav(){
         <MaterialIcons name="receipt" size={22} color="#6B7280" />
         <Text style={styles.navLabel}>Expenses</Text>
       </Pressable>
-      <Pressable style={styles.navItem} onPress={() => router.push('/expenses')}>
+      <Pressable style={styles.navItem} onPress={() => router.push('/add')}>
         <MaterialIcons name="add-circle" size={32} color="#00488d" />
         <Text style={styles.navLabel}>Add</Text>
       </Pressable>
