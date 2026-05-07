@@ -252,10 +252,11 @@ function getIconForCategory(category?: string) {
 function formatDate(iso?: string) {
   if (!iso) return "";
   const d = new Date(iso);
-  return (
-      d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-      `, ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`
-  );
+
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 const styles = StyleSheet.create({
