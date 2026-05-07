@@ -7,12 +7,14 @@ export default function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Logic to determine which tab is currently active
   const isHomeActive = pathname === '/' || pathname === '/dashboard';
   const isExpensesActive = pathname.startsWith('/expenses');
   const isAnalyticsActive = pathname.startsWith('/analytics');
 
   return (
     <View style={styles.bottomNav}>
+      {/* Home / Dashboard */}
       <Pressable
         style={[styles.navItem, isHomeActive && styles.navItemActive]}
         onPress={() => router.push('/dashboard')}
@@ -27,6 +29,7 @@ export default function BottomNav() {
         </Text>
       </Pressable>
 
+      {/* Expenses List */}
       <Pressable
         style={[styles.navItem, isExpensesActive && styles.navItemActive]}
         onPress={() => router.push('/expenses')}
@@ -41,6 +44,7 @@ export default function BottomNav() {
         </Text>
       </Pressable>
 
+      {/* Add Expense - Fixed Path */}
       <Pressable
         style={styles.navItem}
         onPress={() => router.push('/add')}
@@ -49,6 +53,7 @@ export default function BottomNav() {
         <Text style={styles.navLabel}>Add</Text>
       </Pressable>
 
+      {/* Analytics */}
       <Pressable
         style={[styles.navItem, isAnalyticsActive && styles.navItemActive]}
         onPress={() => router.push('/analytics')}
@@ -68,7 +73,7 @@ export default function BottomNav() {
 
 const styles = StyleSheet.create({
   bottomNav: {
-    position: 'absolute',
+    position: 'absolute', // Use 'absolute' for React Native sticky placement
     left: 0,
     right: 0,
     bottom: 0,
@@ -80,7 +85,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    zIndex: 99999,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 10,
+    zIndex: 999,
   },
   navItem: {
     alignItems: 'center',
@@ -93,8 +102,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#e6f0ff',
   },
   navLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#6B7280',
+    marginTop: 4,
   },
   navLabelActive: {
     color: '#00488d',

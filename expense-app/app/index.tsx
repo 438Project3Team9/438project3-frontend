@@ -14,7 +14,7 @@ export default function LoginScreen() {
   return (
       <View style={styles.container}>
         <View style={styles.card}>
-          <Text style={styles.title}>Expense Tracker</Text>
+          <Text style={styles.title}>Rocket Currency</Text>
           <Text style={styles.subtitle}>Log in to track your spending and view monthly insights.</Text>
 
           <TextInput style={styles.input} placeholder="Username" autoCapitalize="none" />
