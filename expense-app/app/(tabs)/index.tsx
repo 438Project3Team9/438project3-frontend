@@ -188,7 +188,7 @@ export default function DashboardScreen() {
           <View style={styles.card}>
             <View style={styles.recentHeaderRow}>
               <Text style={styles.cardTitle}>Recent Expenses</Text>
-              <Pressable>
+             <Pressable onPress={() => router.push("/expenses")}>
                 <Text style={styles.seeAllText}>See All</Text>
               </Pressable>
             </View>
@@ -226,7 +226,9 @@ export default function DashboardScreen() {
               )}
             </View>
 
-            <Pressable style={styles.primaryButton}>
+            <Pressable style={styles.primaryButton}
+            onPress={() => router.push("/add")}>
+              
               <MaterialIcons name="add" size={20} color="#fff" />
               <Text style={styles.primaryButtonText}>Add Expense</Text>
             </Pressable>
@@ -250,10 +252,11 @@ function getIconForCategory(category?: string) {
 function formatDate(iso?: string) {
   if (!iso) return "";
   const d = new Date(iso);
-  return (
-      d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-      `, ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`
-  );
+
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 const styles = StyleSheet.create({

@@ -24,40 +24,59 @@ type AnalyticsCategory = {
 export default function AnalyticsScreen() {
   const [categories, setCategories] = useState<AnalyticsCategory[]>([]);
 
-  useEffect(() => {
-    async function fetchCategories() {
-        
-        try {
-        const response = await fetch(`${API_BASE_URL}/api/categories`);
+useEffect(() => {
+  async function fetchAnalytics() {
+    try {
+      const [categoriesResponse, expensesResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/categories`, { credentials: 'include' }),
+        fetch(`${API_BASE_URL}/api/expenses`, { credentials: 'include' }),
+      ]);
 
-        console.log('Status:', response.status);
+      console.log('Categories status:', categoriesResponse.status);
+      console.log('Expenses status:', expensesResponse.status);
 
-        const data: Category[] = await response.json();
+      const categoryData: Category[] = await categoriesResponse.json();
+      const expenseData = await expensesResponse.json();
 
-        console.log('Fetching categories...');
-        console.log('Status:', response.status);
-        // console.log('Data:', data);
+      console.log('Categories from backend:', categoryData);
+      console.log('Expenses from backend:', expenseData);
 
-        console.log('Categories from backend:', data);
+      const totalSpent = expenseData.reduce(
+        (sum, expense) => sum + Number(expense.amount || 0),
+        0
+      );
 
-        const mappedCategories = data.map((category) => ({
-            id: String(category.categoryId),
-            label: category.name,
-            amount: 0,
-            percent: 0,
-            color: category.color ?? '#605e5c',
-            icon: category.iconName ?? 'category',
-        }));
+      const mappedCategories = categoryData.map((category) => {
+        const categoryExpenses = expenseData.filter(
+          (expense) => Number(expense.categoryId) === Number(category.categoryId)
+        );
 
-        console.log('Mapped categories:', mappedCategories);
-        setCategories(mappedCategories);
-        } catch (error) {
-        console.error('Failed to fetch categories:', error);
-        }
+        const amount = categoryExpenses.reduce(
+          (sum, expense) => sum + Number(expense.amount || 0),
+          0
+        );
+
+        const percent =
+          totalSpent > 0 ? Math.round((amount / totalSpent) * 100) : 0;
+
+        return {
+          id: String(category.categoryId),
+          label: category.name,
+          amount,
+          percent,
+          color: category.color ?? '#605e5c',
+          icon: category.iconName ?? 'category',
+        };
+      });
+
+      setCategories(mappedCategories);
+    } catch (error) {
+      console.error('Failed to fetch analytics:', error);
     }
+  }
 
-    fetchCategories();
-    }, []);
+  fetchAnalytics();
+}, []);
 
   const total = categories.reduce((s, c) => s + c.amount, 0);
 

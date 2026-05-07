@@ -1,181 +1,158 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, FlatList, TouchableOpacity, 
-  Modal, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator 
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 
 const API_BASE_URL = 'http://localhost:9090/api/expenses';
 
 export default function ExpensesScreen() {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modalVisible, setModalVisible] = useState(false);
-  
-  // Form State - Adjusted to match Backend Schema
-  const [editingId, setEditingId] = useState(null);
-  const [merchantName, setMerchantName] = useState('');
-  const [amount, setAmount] = useState('');
-  const [date, setDate] = useState('');
+  const router = useRouter();
+  const isFocused = useIsFocused(); 
 
-  // --- FETCH DATA ---
+  const categories = [
+    { id: 3, name: 'Food', color: '#FFBDAD' },
+    { id: 4, name: 'Transport', color: '#4D96FF' },
+    { id: 5, name: 'Shopping', color: '#B983FF' },
+    { id: 6, name: 'Cafe', color: '#A67C52' },
+    { id: 7, name: 'Grocery', color: '#6BCB77' },
+    { id: 8, name: 'Bills', color: '#FFD93D' },
+    { id: 9, name: 'Entertainment', color: '#FF9F1C' },
+  ];
+
   const fetchExpenses = async () => {
     try {
       setLoading(true);
-      const response = await fetch(API_BASE_URL);
+      const response = await fetch(API_BASE_URL, { credentials: 'include' });
       const data = await response.json();
       setExpenses(data);
-    } catch (error) {
-      console.error("Error fetching expenses:", error);
-      alert("Failed to connect to backend. Check your IP/Port!");
+    } catch (err) {
+      console.error("Fetch Error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchExpenses();
-  }, []);
+  // Logic to handle deleting an expense
+  const deleteExpense = async (id) => {
+  console.log("Trying to delete expense id:", id);
 
-  // --- HANDLERS ---
+  try {
+    const response = await fetch(`${API_BASE_URL}/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
 
-  const handleAddNew = () => {
-    const today = new Date().toISOString().split('T')[0]; 
-    setEditingId(null);
-    setMerchantName('');
-    setAmount('');
-    setDate(today);
-    setModalVisible(true);
-  };
+    console.log("Delete status:", response.status);
 
-  const handleEdit = (item) => {
-    setEditingId(item.expenseId);
-    setMerchantName(item.merchantName || '');
-    setAmount(item.amount.toString());
-    // Extract date string from ISO format
-    setDate(item.expenseDate ? item.expenseDate.split('T')[0] : ''); 
-    setModalVisible(true);
-  };
-
-  const handleSave = async () => {
-
-    if (editingId) {
-      console.log(`Updating Expense ${editingId}:`, { merchantName, amount, date });
-    } else {
-      console.log("Creating New Expense:", { merchantName, amount, date });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log("Delete failed body:", errorText);
+      Alert.alert("Error", `Delete failed: ${response.status}`);
+      return;
     }
-    setModalVisible(false);
-  };
+
+    setExpenses(prev => prev.filter(expense => expense.expenseId !== id));
+  } catch (err) {
+    console.error("Delete Error:", err);
+    Alert.alert("Error", "Network error while deleting.");
+  }
+};
+
+  // Re-fetch data every time the user navigates TO this tab
+  useEffect(() => { 
+    if (isFocused) fetchExpenses(); 
+  }, [isFocused]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>My Expenses</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Expenses</Text>
+      </View>
 
-      <TouchableOpacity style={styles.addButton} onPress={handleAddNew}>
-        <Text style={styles.addButtonText}>+ Add New Expense</Text>
-      </TouchableOpacity>
-      
       {loading ? (
-        <ActivityIndicator size="large" color="#2e7d32" />
+        <ActivityIndicator size="large" color="#003580" style={{ marginTop: 50 }} />
       ) : (
         <FlatList
           data={expenses}
           keyExtractor={(item) => item.expenseId.toString()}
-          renderItem={({ item }) => (
-            <View style={styles.row}>
-              <View style={{ flex: 2 }}>
-                <Text style={styles.cellDate}>
-                  {item.expenseDate ? item.expenseDate.split('T')[0] : 'No Date'}
-                </Text>
-                <Text style={styles.cellName}>{item.merchantName || "Uncategorized"}</Text>
+          contentContainerStyle={{ paddingBottom: 100 }}
+          renderItem={({ item }) => {
+            const cat = categories.find(c => c.id === item.categoryId) || { name: 'Other', color: '#ddd' };
+            return (
+              <View style={styles.card}>
+                {/* Category Icon */}
+                <View style={[styles.icon, { backgroundColor: cat.color, justifyContent: 'center', alignItems: 'center' }]}>
+                   <Text style={{color: '#fff', fontWeight: 'bold'}}>{cat.name.charAt(0)}</Text>
+                </View>
+
+                {/* Expense Details */}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.merchant}>{item.merchantName}</Text>
+                  <Text style={[styles.categoryTag, { color: cat.color }]}>{cat.name.toUpperCase()}</Text>
+                </View>
+
+                {/* Amount and Actions */}
+                <View style={styles.rightContent}>
+                  <Text style={styles.amount}>${parseFloat(item.amount).toFixed(2)}</Text>
+                  <View style={styles.actionRow}>
+                    {/* Edit Button */}
+                    <TouchableOpacity 
+                      onPress={() => router.push({ pathname: '/add', params: { editData: JSON.stringify(item) } })} 
+                      style={[styles.actionBtn, styles.editBtn]}
+                    >
+                      <Text style={styles.editBtnText}>Edit</Text>
+                    </TouchableOpacity>
+
+                    {/* Delete Button */}
+                    <TouchableOpacity 
+                      onPress={() => deleteExpense(item.expenseId)} 
+                      style={[styles.actionBtn, styles.deleteBtn]}
+                    >
+                      <Text style={styles.deleteBtnText}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
-              
-              <Text style={styles.cellAmount}>${item.amount.toFixed(2)}</Text>
-              
-              <TouchableOpacity 
-                style={styles.editButtonSmall} 
-                onPress={() => handleEdit(item)}
-              >
-                <Text style={styles.editButtonText}>Edit</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          ListEmptyComponent={<Text style={{textAlign: 'center', marginTop: 20}}>No expenses found.</Text>}
+            );
+          }}
         />
       )}
-
-      <Modal animationType="slide" transparent={true} visible={modalVisible}>
-        <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView 
-            behavior={Platform.OS === "ios" ? "padding" : "height"} 
-            style={styles.modalView}
-          >
-            <Text style={styles.modalHeader}>
-              {editingId ? "Edit Expense" : "Add New Expense"}
-            </Text>
-            
-            <Text style={styles.label}>Amount</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="0.00" 
-              keyboardType="numeric"
-              value={amount}
-              onChangeText={setAmount}
-            />
-            
-            <Text style={styles.label}>Merchant / Description</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="e.g. Burrito, Starbucks" 
-              value={merchantName}
-              onChangeText={setMerchantName}
-            />
-
-            <Text style={styles.label}>Date (YYYY-MM-DD)</Text>
-            <TextInput 
-              style={styles.input} 
-              value={date}
-              onChangeText={setDate}
-            />
-
-            <TouchableOpacity style={styles.saveAction} onPress={handleSave}>
-              <Text style={styles.saveButtonText}>Save</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.cancelAction} onPress={() => setModalVisible(false)}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </KeyboardAvoidingView>
-        </View>
-      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#fff', paddingTop: 60 },
-  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
-  addButton: { backgroundColor: '#2e7d32', padding: 15, borderRadius: 10, marginBottom: 20, alignItems: 'center' },
-  addButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  row: { 
+  container: { flex: 1, backgroundColor: '#F8F9FB' },
+  header: { 
+    paddingTop: 60, 
+    paddingHorizontal: 20, 
+    paddingBottom: 20, 
+    backgroundColor: '#fff', 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#eee' 
+  },
+  headerTitle: { fontSize: 26, fontWeight: '800', color: '#003580' },
+  card: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    paddingVertical: 15, 
-    borderBottomWidth: 1, 
-    borderBottomColor: '#eee',
-    justifyContent: 'space-between'
+    backgroundColor: '#fff', 
+    marginHorizontal: 15, 
+    marginTop: 12, 
+    padding: 15, 
+    borderRadius: 16, 
+    elevation: 2 
   },
-  cellDate: { fontSize: 12, color: '#888' },
-  cellName: { fontSize: 16, fontWeight: '600', color: '#333' },
-  cellAmount: { flex: 1, fontSize: 16, fontWeight: 'bold', textAlign: 'right', marginRight: 15, color: '#2e7d32' },
-  editButtonSmall: { backgroundColor: '#2e7d32', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 8 },
-  editButtonText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalView: { width: '90%', backgroundColor: 'white', borderRadius: 20, padding: 25, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
-  modalHeader: { fontSize: 22, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  label: { fontSize: 14, fontWeight: '600', color: '#555', marginBottom: 5 },
-  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 10, padding: 12, fontSize: 16, marginBottom: 15 },
-  saveAction: { backgroundColor: '#2e7d32', padding: 16, borderRadius: 10, alignItems: 'center', marginBottom: 10 },
-  saveButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  cancelAction: { padding: 16, alignItems: 'center' },
-  cancelButtonText: { color: '#666', fontWeight: '600' },
+  icon: { width: 44, height: 44, borderRadius: 10, marginRight: 15 },
+  merchant: { fontSize: 16, fontWeight: '700', color: '#1A1C1E' },
+  categoryTag: { fontSize: 10, fontWeight: '800', marginTop: 2 },
+  rightContent: { alignItems: 'flex-end' },
+  amount: { fontSize: 16, fontWeight: '800', color: '#1A1C1E' },
+  actionRow: { flexDirection: 'row', marginTop: 8 },
+  actionBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
+  editBtn: { backgroundColor: '#003580' },
+  editBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  deleteBtn: { backgroundColor: '#FFEDED', marginLeft: 8 },
+  deleteBtnText: { color: '#FF4D4D', fontSize: 11, fontWeight: '700' },
 });
