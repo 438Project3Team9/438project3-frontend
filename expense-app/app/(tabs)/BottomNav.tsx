@@ -1,33 +1,59 @@
 import React, { useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 
 export default function BottomNav(){
   const router = useRouter();
+  const pathname = usePathname() || '/';
 
   useEffect(() => {
     // debug mount
   console.log('BottomNav mounted');
   }, []);
 
+  const isActive = (route: 'home' | 'expenses' | 'analytics' | 'add') => {
+    if (route === 'home') {
+      return pathname === '/' || pathname === '' || pathname.includes('/dashboard') || pathname.endsWith('/index');
+    }
+    if (route === 'expenses') return pathname.includes('/expenses');
+    if (route === 'analytics') return pathname.includes('/analytics');
+    if (route === 'add') return pathname.includes('/add') || pathname.includes('/expenses');
+    return false;
+  };
+
   return (
-  <View style={styles.bottomNav}>
-      <Pressable style={[styles.navItem, styles.navItemActive]} onPress={() => router.push('/') }>
-        <MaterialIcons name="dashboard" size={22} color="#00488d" />
-        <Text style={[styles.navLabel, styles.navLabelActive]}>Home</Text>
+    <View style={styles.bottomNav}>
+      <Pressable
+        style={[styles.navItem, isActive('home') && styles.navItemActive]}
+        onPress={() => router.push('/') }
+      >
+        <MaterialIcons name="dashboard" size={22} color={isActive('home') ? '#00488d' : '#6B7280'} />
+        <Text style={[styles.navLabel, isActive('home') && styles.navLabelActive]}>Home</Text>
       </Pressable>
-      <Pressable style={styles.navItem} onPress={() => router.push('/expenses')}>
-        <MaterialIcons name="receipt" size={22} color="#6B7280" />
-        <Text style={styles.navLabel}>Expenses</Text>
+
+      <Pressable
+        style={[styles.navItem, isActive('expenses') && styles.navItemActive]}
+        onPress={() => router.push('/expenses')}
+      >
+        <MaterialIcons name="receipt" size={22} color={isActive('expenses') ? '#00488d' : '#6B7280'} />
+        <Text style={[styles.navLabel, isActive('expenses') && styles.navLabelActive]}>Expenses</Text>
       </Pressable>
-      <Pressable style={styles.navItem} onPress={() => router.push('/expenses')}>
-        <MaterialIcons name="add-circle" size={32} color="#00488d" />
-        <Text style={styles.navLabel}>Add</Text>
+
+      <Pressable
+        style={[styles.navItem]}
+        onPress={() => router.push('/expenses')}
+      >
+        <MaterialIcons name="add-circle" size={32} color={isActive('add') ? '#00488d' : '#00488d'} />
+        <Text style={[styles.navLabel, isActive('add') && styles.navLabelActive]}>Add</Text>
       </Pressable>
-      <Pressable style={styles.navItem} onPress={() => router.push('/analytics')}>
-        <MaterialIcons name="pie-chart" size={22} color="#6B7280" />
-        <Text style={styles.navLabel}>Analytics</Text>
+
+      <Pressable
+        style={[styles.navItem, isActive('analytics') && styles.navItemActive]}
+        onPress={() => router.push('/analytics')}
+      >
+        <MaterialIcons name="pie-chart" size={22} color={isActive('analytics') ? '#00488d' : '#6B7280'} />
+        <Text style={[styles.navLabel, isActive('analytics') && styles.navLabelActive]}>Analytics</Text>
       </Pressable>
     </View>
   );
