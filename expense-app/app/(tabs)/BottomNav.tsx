@@ -73,7 +73,7 @@ export default function BottomNav() {
 
 const styles = StyleSheet.create({
   bottomNav: {
-    position: 'absolute', // Use 'absolute' for React Native sticky placement
+    position: 'absolute', 
     left: 0,
     right: 0,
     bottom: 0,
