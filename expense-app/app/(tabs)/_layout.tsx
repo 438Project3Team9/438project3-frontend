@@ -9,6 +9,7 @@ export default function TabsLayout() {
 
         <Tabs.Screen name="expenses" options={{ title: 'Expenses' }} />
         <Tabs.Screen name="analytics" options={{ title: 'Analytics' }} />
+        <Tabs.Screen name="add" options={{ title: 'Add' }} />
         {/* <Tabs.Screen name="profile" options={{ title: 'Profile' }} /> */}
       </Tabs>
       <BottomNav />
